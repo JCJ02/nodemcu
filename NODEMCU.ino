@@ -36,7 +36,7 @@ const char* password = "1234567aa";
 int battery = 0; // Variable to store the sound value
 
 const int relay = 16;
-const char* serverName = "https://192.168.80.173/powerwalksystem/get_data.php";
+const char* serverName = "https://192.168.217.173/powerwalksystem/get_data.php";
 unsigned long timerStart = 0; // To store the start time of the timer
 unsigned long timerDuration = 10000; // Timer duration in milliseconds (e.g., 10000 ms = 10 seconds)
 bool timerStarted = false; // Flag to check if the timer was started
@@ -60,29 +60,14 @@ void setup()
   digitalWrite(relay, HIGH);
   Serial.print("Connected to WiFi Network with IP Address: ");
   Serial.println(WiFi.localIP());
-  //Display Text
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 10);
-  display.println("STUDENT CHARGING");
-  display.setCursor(0, 20);
-  display.println("STATION");
-  display.setCursor(0, 40);
-  display.println("PLEASE TAP YOUR CARD");
-  display.display();
+
   delay(3000);
   SPI.begin(); // Initiate  SPI bus
   mfrc522.PCD_Init(); // Initiate MFRC522
 }
+
 void loop() 
 {
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 10);
-  display.println("CHARGING STATION");
-  display.setCursor(0, 20);
-  display.println("STATION");
-  display.clearDisplay();
 
   if(WiFi.status()== WL_CONNECTED){
     std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
@@ -149,55 +134,20 @@ void loop()
 
     https.end();
 
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 10);
-    display.println("CHARGING STATION");
-    display.setCursor(0, 20);
-    display.println("STATION");
-    display.setCursor(0, 40);
-    display.print("UID: ");
-    display.println(content);
-    display.print("Result: ");
-    display.println(payload);
-    display.display();
-
     // Check if the UID is "123456"
-    if (content == payload) {
-      delay(1000);
-      display.clearDisplay();
-  
-      display.setTextSize(1);
-      display.setTextColor(WHITE);
-      display.setCursor(0, 10);
-      display.println("CHARGING STATION");
-      display.setCursor(0, 20);
-      display.println("STATION");
-      display.setCursor(0, 40);
-      display.print("UID: ");
-      display.println(content);
-      display.print("CHARGING.....");
-      digitalWrite(relay, LOW);
-      display.display();
-      Serial.println(content);
-      display.clearDisplay();
+    if (payload=="Yes") {
+
+      Serial.println("Yes");
+
     }else{
-      Serial.println("INVALID RFID");
-      delay(5000);
+      Serial.println(payload);
+
+      delay(1000);
       Serial.flush();
     }
   } else{
 
   }
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 10);
-  display.println("STUDENT CHARGING");
-  display.setCursor(0, 20);
-  display.println("STATION");
-  display.setCursor(0, 40);
-  display.println("PLEASE TAP YOUR CARD");
-  display.display();
 } 
+
