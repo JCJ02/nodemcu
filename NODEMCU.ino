@@ -36,13 +36,53 @@ const char* password = "1234567aa";
 int battery = 0; // Variable to store the sound value
 
 const int relay = 16;
-const char* serverName = "https://192.168.217.173/powerwalksystem/get_data.php";
+const char* serverName = "https://192.168.11.173/powerwalksystem/get_data.php";
 unsigned long timerStart = 0; // To store the start time of the timer
 unsigned long timerDuration = 10000; // Timer duration in milliseconds (e.g., 10000 ms = 10 seconds)
 bool timerStarted = false; // Flag to check if the timer was started
 unsigned long elapsedTime = 0; // Variable to store elapsed time
+
+// const int batteryPin = A0; // ADC pin connected to battery voltage
+// const float fullBatteryVoltage = 12.8; // Example for a Li-ion battery
+
 const int batteryPin = A0; // ADC pin connected to battery voltage
-const float fullBatteryVoltage = 12.0; // Example for a Li-ion battery
+const float voltageDividerRatio = 4.78; // Adjust this based on your voltage divider circuit
+const float referenceVoltage = 3.3; // NodeMCU ADC reference voltage
+
+// float getBatteryPercentage(float voltage) {
+//     if (voltage >= 12.6) return 100;
+//     else if (voltage >= 12.5) return 90;
+//     else if (voltage >= 12.42) return 80;
+//     else if (voltage >= 12.32) return 70;
+//     else if (voltage >= 12.2) return 60;
+//     else if (voltage >= 12.06) return 50;
+//     else if (voltage >= 11.9) return 40;
+//     else if (voltage >= 11.75) return 30;
+//     else if (voltage >= 11.58) return 20;
+//     else if (voltage >= 11.31) return 10;
+//     else return 0;
+// }
+
+float getBatteryPercentage(float voltage) {
+    // Voltage-to-capacity mapping for a 12V lead-acid battery
+    const float voltagePoints[] = {10.5, 11.31, 11.58, 11.75, 11.9, 12.06, 12.2, 12.32, 12.42, 12.5, 12.6};
+    const float capacityPoints[] = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+
+    // Ensure the voltage is within the valid range
+    if (voltage <= voltagePoints[0]) return 0; // Below minimum voltage
+    if (voltage >= voltagePoints[10]) return 100; // Above maximum voltage
+
+    // Find the interval where the voltage lies
+    int i = 0;
+    while (voltage > voltagePoints[i + 1]) {
+        i++;
+    }
+
+    // Linear interpolation
+    float percentage = capacityPoints[i] + (voltage - voltagePoints[i]) * (capacityPoints[i + 1] - capacityPoints[i]) / (voltagePoints[i + 1] - voltagePoints[i]);
+
+    return percentage;
+}
 
 void setup() 
 {
@@ -82,11 +122,26 @@ void loop()
     https.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     int adcReading = analogRead(batteryPin); 
+    float batteryVoltage = (adcReading / 1023.0) * referenceVoltage * voltageDividerRatio;
+    float batteryPercentage = getBatteryPercentage(batteryVoltage);
 
-    float batteryVoltage = (adcReading * 12.0) / 1023; // Assuming 3.3V reference voltage
+    // Serial.print("Battery Voltage: ");
+    // Serial.print(batteryVoltage);
+    // Serial.print("V, Battery Percentage: ");
+    // Serial.print(batteryPercentage);
+    // Serial.println("%");
 
-    float batteryPercentage = (batteryVoltage / fullBatteryVoltage) * 100;
-    
+
+
+    // int adcReading = analogRead(batteryPin); 
+
+    // float batteryVoltage = (adcReading * 12.0) / 1023; // Assuming 3.3V reference voltage
+
+    // float batteryPercentage = (batteryVoltage / fullBatteryVoltage) * 100;
+
+
+
+
     // Look for new cards
     if ( ! mfrc522.PICC_IsNewCardPresent()) 
     {
@@ -101,22 +156,26 @@ void loop()
     String content= "";
     byte letter;
     String decimalContent= "";
-  for (byte i = 0; i < mfrc522.uid.size; i++) 
-  {
-    content.concat(String(mfrc522.uid.uidByte[i], HEX));
-    decimalContent.concat(String(mfrc522.uid.uidByte[i], DEC)); /////eto lng ilipat mo
-    
-  }
-  content.toUpperCase(); // Ensure case consistency (HEX is case-insensitive)
+    for (byte i = 0; i < mfrc522.uid.size; i++) 
+    {
+      content.concat(String(mfrc522.uid.uidByte[i], HEX));
+      decimalContent.concat(String(mfrc522.uid.uidByte[i], DEC)); /////eto lng ilipat mo
+      
+    }
+    content.toUpperCase(); // Ensure case consistency (HEX is case-insensitive)
 
+
+
+    // String elect = String(raw_adc);
     String elect = String(adcReading);
+    String bv = String(batteryVoltage);
     String batt = String(batteryPercentage);
-    ////String co2 = String(content);
+    // String co2 = String(content);
     String co2 = String(decimalContent);
 
     // Prepare your HTTP POST request data
-    String httpRequestData = "&battery=" + batt + "&uid=" + co2 + "&elect=" + elect ;
-  
+    String httpRequestData = "&battery=" + batt + "&uid=" + co2 + "&elect=" + elect + "&battVol=" + bv;
+
     // You can comment the httpRequestData variable above
     // then, use the httpRequestData variable below (for testing purposes without the BME280 sensor)
     //String httpRequestData = "api_key=tPmAT5Ab3j7F9&sensor=BME280&location=Office&value1=24.75&value2=49.54&value3=1005.14";
@@ -126,11 +185,11 @@ void loop()
 
     String payload = https.getString();
  
-  if (httpResponseCode > 0) {
+    if (httpResponseCode > 0) {
 
-  } else {
-    
-  }
+    } else {
+      
+    }
 
     https.end();
 
@@ -139,13 +198,14 @@ void loop()
 
       Serial.println("Yes");
 
-    }else{
+    } else{
       Serial.println(payload);
 
       delay(1000);
       Serial.flush();
     }
-  } else{
+
+  } else {
 
   }
 
